@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f2ef">
+  <meta name="description" content="A cozy, offline bird-themed logic puzzle. One bird per row, column, and color.">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./style.css">
+  <title>Birdoku · Little puzzle, big chirps</title>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <img src="./icon.svg" width="48" height="48" alt="" class="brand-icon">
+        <div>
+          <h1>Birdoku<span class="brand-star">✦</span></h1>
+          <p class="subtitle">A little puzzle break</p>
+        </div>
+      </div>
+      <div class="progress-pill" id="progress" aria-live="polite">0 / 10 birds</div>
+    </header>
+
+    <section class="panel settings-panel" aria-label="Choose a puzzle">
+      <label>Grid size
+        <select id="grid-size">
+          <option value="6">6 × 6</option>
+          <option value="8">8 × 8</option>
+          <option value="10" selected>10 × 10</option>
+        </select>
+      </label>
+      <label>Difficulty
+        <select id="difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
+      <button type="button" class="new-button" id="new-puzzle"><span aria-hidden="true">↻</span> New</button>
+    </section>
+
+    <div class="rules">One <strong>bird</strong> per row, column &amp; color <span class="rule-dot">•</span> Birds can't touch, even diagonally<div class="swipe-note">Tap once for ×, twice for a bird · Swipe to mark ×</div></div>
+
+    <section class="play-area" aria-label="Puzzle board">
+      <div class="board" id="board" role="group" aria-label="Birdoku grid"></div>
+    </section>
+
+    <div class="message" id="message" aria-live="polite">Tap once for ×, again for a bird · Swipe to cross out squares.</div>
+
+    <nav class="actions" aria-label="Game actions">
+      <button type="button" id="undo"><span aria-hidden="true">↶</span> Undo</button>
+      <button type="button" id="restart"><span aria-hidden="true">⟲</span> Restart</button>
+      <button type="button" id="hint"><span aria-hidden="true">✧</span> Hint</button>
+    </nav>
+    <p class="footer">No ads · No account · Play offline <span aria-hidden="true">♡</span></p>
+  </main>
+
+  <div class="overlay hidden" id="win-dialog" role="dialog" aria-modal="true" aria-labelledby="win-title">
+    <div class="win-card">
+      <div class="win-bird" aria-hidden="true">🐦 ✨</div>
+      <h2 id="win-title">Beautifully done!</h2>
+      <p>Every bird has found its place.</p>
+      <button type="button" id="play-again" class="new-button">Another puzzle <span aria-hidden="true">↗</span></button>
+      <button type="button" id="close-dialog" class="quiet-button">Admire my board</button>
+    </div>
+  </div>
+
+  <script src="./starters.js"></script>
+  <script src="./generator.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
