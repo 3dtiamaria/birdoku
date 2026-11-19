@@ -2,9 +2,16 @@
   'use strict';
   const SAVE_KEY = 'birdoku-state-v1';
   const USED_KEY = 'birdoku-used-starters-v1';
-  // The first eleven colors retain the original palette, expanded to support 15 pastels.
-  const COLORS = ['#b07b58', '#f5a9c8', '#e8bd50', '#ebd78c', '#617db3', '#bdd1e3', '#ffa877', '#5eb7b6', '#d780b5', '#9774c6', '#b1d99d', '#e19d9e', '#9fc6b1', '#c8b5df', '#dfb78f', '#8fbfdb', '#d9a7c7', '#c1c68c', '#e59575', '#9b9bbd'];
-  const MIN_SIZE = 8, MAX_SIZE = 15;
+  // The first eleven colors retain the original palette, expanded for variable-sized boards.
+  // Fixed, gentle rainbow based on the original game’s silhouette progression:
+  // rose → blush → peach → gold → green → teal → blue → lilac → pink.
+  // Keep the same order across puzzles rather than shuffling the palette.
+  const COLORS = [
+    '#ec9db5', '#f4bccf', '#efb2ac', '#f5c4a4',
+    '#edda91', '#c4dda4', '#a1d4c3', '#87c9d0',
+    '#a8d5ed', '#aec3e7', '#c2b0df', '#dcadd2'
+  ];
+  const MIN_SIZE = 8, MAX_SIZE = 12;
   const randomSize = () => MIN_SIZE + Math.floor(Math.random() * (MAX_SIZE - MIN_SIZE + 1));
   const $ = (id) => document.getElementById(id);
   const board = $('board');
@@ -26,18 +33,9 @@
     if (old && typeof old === 'object') usedStarters = {...usedStarters, ...old};
   } catch (_) { /* storage may be disabled */ }
 
-  // Original simple bird icon drawn directly as SVG; no external images or fonts.
-  const birdSVG = `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" class="bird-drawing" aria-hidden="true">
-    <path d="M17 25Q10 10 22 8L30 19Q33 11 43 12L46 25" fill="#68667e" stroke="#4c4a65" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M9 32Q9 16 32 15Q55 15 55 36Q55 55 33 56Q10 54 9 32Z" fill="#6d6a86"/>
-    <path d="M13 41Q20 49 33 46Q47 46 52 40Q48 57 32 57Q18 56 13 41Z" fill="#fff9ef"/>
-    <ellipse cx="22" cy="31" rx="3.4" ry="4.4" fill="#29293e"/>
-    <ellipse cx="42" cy="31" rx="3.4" ry="4.4" fill="#29293e"/>
-    <circle cx="23" cy="29" r="1.3" fill="#fff"/><circle cx="43" cy="29" r="1.3" fill="#fff"/>
-    <ellipse cx="15" cy="39" rx="5.8" ry="3.7" fill="#e4a7b0" opacity=".85"/>
-    <ellipse cx="49" cy="39" rx="5.8" ry="3.7" fill="#e4a7b0" opacity=".85"/>
-    <path d="M26 37Q32 33 38 37L32 43Z" fill="#f0b761" stroke="#d89847" stroke-width=".7" stroke-linejoin="round"/>
-  </svg>`;
+  // The black bird silhouette is based on the supplied bird-emoji reference.
+  const birdSVG = `<svg viewBox="-7 -7 253 214" xmlns="http://www.w3.org/2000/svg" class="bird-drawing" aria-hidden="true"><path class="bird-shape" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M 46 1 L 30 8 L 17 21 L 11 38 L 11 47 L 13 49 L 3 58 L 0 65 L 7 70 L 19 71 L 17 74 L 20 81 L 24 110 L 32 131 L 54 149 L 64 154 L 83 157 L 83 167 L 81 170 L 63 175 L 60 178 L 61 184 L 76 184 L 88 180 L 93 175 L 95 168 L 94 158 L 91 157 L 110 156 L 110 175 L 90 194 L 92 199 L 98 199 L 112 190 L 122 180 L 123 166 L 121 153 L 143 153 L 151 149 L 161 139 L 169 137 L 176 128 L 183 124 L 182 114 L 172 108 L 211 81 L 227 73 L 238 63 L 238 59 L 230 50 L 218 43 L 199 36 L 172 32 L 166 33 L 149 56 L 142 63 L 135 65 L 124 60 L 116 52 L 104 27 L 86 8 L 67 0 Z"/><ellipse class="bird-eye" cx="55" cy="47" rx="5.3" ry="6.2" fill="#fff5e8"/></svg>`;
+  // The same silhouette is reused for color-region progress markers.
 
   function tell(text, duration = 3500) {
     message.textContent = text;
@@ -51,7 +49,7 @@
   }
 
   function validState(s) {
-    return s && Number.isInteger(s.size) && // Preserve progress on older 6×6 and larger boards, while new boards stay 8–15.
+    return s && Number.isInteger(s.size) && // Preserve progress on older boards, while new boards stay 8–12.
       s.size >= 6 && s.size <= 20 &&
       Array.isArray(s.regions) && s.regions.length === s.size * s.size &&
       Array.isArray(s.marks) && s.marks.length === s.size * s.size &&
@@ -59,11 +57,10 @@
       Array.isArray(s.givens) && s.givens.length === s.size * s.size;
   }
 
-  function countBirds() { return state.marks.filter(mark => mark === 'bird').length; }
-
   function render() {
     if (!state) return;
     const n = state.size;
+    const palette = n > 12 && Array.isArray(state.palette) ? state.palette : COLORS;
     board.style.setProperty('--n', String(n));
     board.dataset.size = String(n);
     board.setAttribute('aria-label', `${n} by ${n} bird puzzle`);
@@ -75,10 +72,23 @@
       if (hintIndex === i) classes.push('is-hinted');
       const glyph = mark === 'bird' ? birdSVG : mark === 'x' ? '<span class="cross">×</span>' : '';
       const label = `${mark === 'bird' ? 'Bird' : mark === 'x' ? 'Eliminated' : 'Empty'}, row ${r + 1}, column ${c + 1}${mark === 'bird' ? ', tap to clear' : mark === 'x' ? ', tap to try a bird' : ', tap to mark X'}`;
-      html += `<button class="${classes.join(' ')}" data-i="${i}" type="button" style="--cell-color:${state.palette?.[state.regions[i]] || COLORS[state.regions[i]]}" aria-label="${label}">${glyph}</button>`;
+      html += `<button class="${classes.join(' ')}" data-i="${i}" type="button" style="--cell-color:${palette[state.regions[i]] || COLORS[state.regions[i] % COLORS.length]}" aria-label="${label}">${glyph}</button>`;
     }
     board.innerHTML = html;
-    $('progress').textContent = `${countBirds()} / ${n} birds`;
+    const progress = $('progress');
+    const placedColors = new Set();
+    for (let i = 0; i < state.marks.length; i++) {
+      if (state.marks[i] === 'bird') placedColors.add(state.regions[i]);
+    }
+    progress.style.setProperty('--progress-count', String(n));
+    progress.setAttribute('aria-label', `${placedColors.size} of ${n} bird colors completed`);
+    // Order the same colors as the board into a warm-to-cool rainbow strip.
+    const rainbowOrder = Array.from({length: n}, (_, i) => i);
+    progress.innerHTML = rainbowOrder.map(region => {
+      const found = placedColors.has(region);
+      const color = palette[region] || COLORS[region % COLORS.length];
+      return `<span class="rainbow-bird${found ? ' is-found' : ''}" style="--bird-color:${color}" title="${found ? 'Bird placed' : 'Bird to find'}">${birdSVG}</span>`;
+    }).join('');
     $('undo').disabled = !state.history || state.history.length === 0;
   }
 
@@ -195,17 +205,13 @@
     const givens = Array(size * size).fill('');
     const number = (state?.number || 0) + 1;
     const palette = [...COLORS];
-    for (let i = palette.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [palette[i], palette[j]] = [palette[j], palette[i]];
-    }
     state = {size, regions: p.regions, solution: p.solution, palette: palette.slice(0, size),
       givens, marks, number, completed: false, history: []};
     hintIndex = -1;
     dialog.classList.add('hidden');
     save();
     render();
-    tell(`Puzzle ${number} · ${size} × ${size} · Find ${size} birds!`);
+    tell(`Find ${size} birds!`);
   }
 
   function starterFor(size) {

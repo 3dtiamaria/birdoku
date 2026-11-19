@@ -24,7 +24,7 @@ button:focus-visible, select:focus-visible { outline: 3px solid var(--orange); o
 h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weight: 800; letter-spacing: -1.3px; }
 .brand-star { color: var(--orange); font-size: 19px; margin-left: 3px; vertical-align: top; }
 .subtitle { margin: 5px 0 0; font-size: 12px; font-weight: 600; color: #b58f84; letter-spacing: .2px; }
-.progress-pill { flex-shrink: 0; background: #fffaf5; border: 1px solid #f2e7de; border-radius: 999px; padding: 10px 12px; font-size: 12px; font-weight: 800; box-shadow: 0 3px 10px #ad81791c; }
+
 .panel { background: var(--paper); border: 1px solid #f1e5df; border-radius: 20px; box-shadow: var(--shadow); }
 .settings-panel { display: flex; padding: 11px 14px; align-items: center; justify-content: space-between; gap: 8px; }
 .random-label { color: #aa867c; font-size: 12px; font-weight: 700; display: flex; flex-direction: column; gap: 2px; }
@@ -36,6 +36,12 @@ h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weigh
 .rules strong { color: var(--brown); }
 .swipe-note { margin-top: 4px; color: #a78276; }
 .rule-dot { padding: 0 4px; color: #d2ada0; }
+/* One pastel silhouette for each color; black means a bird was placed. */
+.rainbow-progress { --progress-count: 10; width: min(100%, 390px); margin: 0 auto 11px; padding: 5px 9px; min-height: 37px; display: grid; grid-template-columns: repeat(var(--progress-count), minmax(0,1fr)); align-items: center; gap: 1px; background: #fffdfb; border-radius: 999px; box-shadow: 0 3px 12px rgba(126, 84, 72, .05); }
+.rainbow-bird { display: grid; place-items: center; min-width: 0; height: 31px; color: var(--bird-color); transition: color .18s, transform .18s; }
+.rainbow-bird.is-found { color: #25232b; transform: translateY(-1px); }
+.rainbow-bird .bird-drawing { width: 100%; max-height: 31px; height: 100%; }
+.rainbow-bird .bird-eye { display: none; }
 .play-area { background: #fff; padding: 5px; border-radius: 20px; box-shadow: 0 10px 22px rgba(122, 77, 75, .06); }
 .board { width: 100%; aspect-ratio: 1; display: grid; gap: 3px; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); grid-template-rows: repeat(var(--n), minmax(0, 1fr)); touch-action: none; user-select: none; -webkit-user-select: none; }
 .cell { container-type: inline-size; min-width: 0; min-height: 0; border: 0; padding: 0; margin: 0; border-radius: 5px; position: relative; display: grid; place-items: center; background: var(--cell-color); overflow: hidden; transition: filter .1s, transform .1s; }
@@ -43,7 +49,7 @@ h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weigh
 .cell:focus-visible { outline: 2px solid #685077; outline-offset: -3px; z-index: 2; }
 .cell.is-given { background-image: repeating-linear-gradient(45deg,transparent,transparent 10px,rgba(255,255,255,.12) 10px,rgba(255,255,255,.12) 20px); }
 .cell .cross { font-family: 'Trebuchet MS', system-ui, sans-serif; font-size: clamp(10px, 79cqi, 40px); font-weight: 900; line-height: 1; color: #fffaf3; text-shadow: 0 2px 2px rgba(114,64,57,.17); transform: translateY(-2px); }
-.cell .bird-drawing { width: 88%; height: 88%; filter: drop-shadow(0 1px 1px rgba(67,54,67,.15)); }
+.cell .bird-drawing { width: 92%; height: 92%; color: #212127; filter: drop-shadow(0 1px 1px rgba(67,54,67,.15)); }
 .cell.is-hinted { animation: hint-pulse .8s ease 2; box-shadow: inset 0 0 0 3px rgba(255,255,255,.96); }
 .cell.is-error { animation: error-wiggle .25s ease-in-out 2; box-shadow: inset 0 0 0 3px #cc6a67; }
 @keyframes hint-pulse { 50% { filter: saturate(1.6) brightness(1.08); } }
@@ -59,10 +65,18 @@ h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weigh
 .overlay { position: fixed; inset: 0; background: rgba(83,58,61,.38); display: grid; place-items: center; padding: 25px; z-index: 8; }
 .hidden { display: none !important; }
 .win-card { background: #fffbf7; border-radius: 28px; width: min(100%, 340px); padding: 27px 24px; display: flex; flex-direction: column; gap: 12px; align-items: center; box-shadow: 0 20px 70px #432f3344; }
-.win-bird { font-size: 49px; }
+.win-bird { display: flex; align-items: center; justify-content: center; gap: 4px; }
+.win-bird .bird-drawing { color: #24232a; width: 74px; height: 64px; }
+.win-bird span { font-size: 35px; }
 .win-card h2 { font-size: 26px; margin: 0; }
 .win-card p { color: #ac837b; margin: 0 0 4px; text-align: center; }
 .win-card .new-button { width: 100%; }
 .quiet-button { border: none; background: transparent; color: #a18278; font-size: 13px; padding: 8px; font-weight: 700; }
 @media (max-width: 360px) { .app { padding-left: 9px; padding-right: 9px; } .settings-panel { gap: 5px; padding: 9px; } .new-button { padding: 0 10px; } .rules { font-size: 11px; } }
 @media (min-width: 600px) { .app { padding-top: 40px; } }
+
+/* Preview: the clear, single-action layout. */
+.rules { margin-top: 10px; margin-bottom: 18px; }
+.new-puzzle-bottom { margin: 7px 0 0; }
+.new-puzzle-bottom .new-button { width: 100%; min-height: 52px; border-radius: 15px; font-size: 15px; }
+.footer { margin-top: 18px; }

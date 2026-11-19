@@ -20,15 +20,11 @@
           <p class="subtitle">A little puzzle break</p>
         </div>
       </div>
-      <div class="progress-pill" id="progress" aria-live="polite">0 / 10 birds</div>
     </header>
 
-    <section class="panel settings-panel" aria-label="New puzzle">
-      <span class="random-label">Random grid <strong>8 × 8 – 15 × 15</strong></span>
-      <button type="button" class="new-button" id="new-puzzle"><span aria-hidden="true">↻</span> New puzzle</button>
-    </section>
-
     <div class="rules">One <strong>bird</strong> per row, column &amp; color <span class="rule-dot">•</span> Birds can't touch, even diagonally<div class="swipe-note">Tap once for ×, twice for a bird · Swipe to mark ×</div></div>
+
+    <div class="rainbow-progress" id="progress" role="img" aria-label="Bird colors to find"></div>
 
     <section class="play-area" aria-label="Puzzle board">
       <div class="board" id="board" role="group" aria-label="Birdoku grid"></div>
@@ -41,12 +37,13 @@
       <button type="button" id="restart"><span aria-hidden="true">⟲</span> Restart</button>
       <button type="button" id="hint"><span aria-hidden="true">✧</span> Hint</button>
     </nav>
+    <div class="new-puzzle-bottom"><button type="button" class="new-button" id="new-puzzle"><span aria-hidden="true">↻</span> New puzzle</button></div>
     <p class="footer">No ads · No account · Play offline <span aria-hidden="true">♡</span></p>
   </main>
 
   <div class="overlay hidden" id="win-dialog" role="dialog" aria-modal="true" aria-labelledby="win-title">
     <div class="win-card">
-      <div class="win-bird" aria-hidden="true">🐦 ✨</div>
+      <div class="win-bird" aria-hidden="true"><svg viewBox="-7 -7 253 214" xmlns="http://www.w3.org/2000/svg" class="bird-drawing" aria-hidden="true"><path class="bird-shape" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M 46 1 L 30 8 L 17 21 L 11 38 L 11 47 L 13 49 L 3 58 L 0 65 L 7 70 L 19 71 L 17 74 L 20 81 L 24 110 L 32 131 L 54 149 L 64 154 L 83 157 L 83 167 L 81 170 L 63 175 L 60 178 L 61 184 L 76 184 L 88 180 L 93 175 L 95 168 L 94 158 L 91 157 L 110 156 L 110 175 L 90 194 L 92 199 L 98 199 L 112 190 L 122 180 L 123 166 L 121 153 L 143 153 L 151 149 L 161 139 L 169 137 L 176 128 L 183 124 L 182 114 L 172 108 L 211 81 L 227 73 L 238 63 L 238 59 L 230 50 L 218 43 L 199 36 L 172 32 L 166 33 L 149 56 L 142 63 L 135 65 L 124 60 L 116 52 L 104 27 L 86 8 L 67 0 Z"/><ellipse class="bird-eye" cx="55" cy="47" rx="5.3" ry="6.2" fill="#fff5e8"/></svg><span>✨</span></div>
       <h2 id="win-title">Beautifully done!</h2>
       <p>Every bird has found its place.</p>
       <button type="button" id="play-again" class="new-button">Another puzzle <span aria-hidden="true">↗</span></button>
