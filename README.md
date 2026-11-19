@@ -10,7 +10,7 @@ Place **one bird in each row, column and colored region**. Birds can't touch, ev
 
 The grid size (6×6, 8×8, 10×10) is independent of difficulty. **Easy** begins with about 19% of cells eliminated, **Medium** with about 6%, and **Hard** with no starter crosses. Each board is checked to have exactly one valid solution. Connected colored regions are generated in a background worker, with pre-generated boards for instant first play.
 
-## Install on your Fairphone (free)
+## Install on your phone
 
 1. Unzip all the files and upload **the contents of this folder** to a free GitHub repository.
 2. On GitHub, open **Settings → Pages**, choose **Deploy from a branch → main → /(root)**, then save.
