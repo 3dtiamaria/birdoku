@@ -43,7 +43,7 @@
   function tell(text, duration = 3500) {
     message.textContent = text;
     if (messageTimeout) clearTimeout(messageTimeout);
-    if (duration) messageTimeout = setTimeout(() => { message.textContent = 'One bird in every row, column, and color.'; }, duration);
+    if (duration) messageTimeout = setTimeout(() => { message.textContent = ''; }, duration);
   }
 
   function save() {
@@ -85,6 +85,10 @@
       if (state.marks[i] === 'bird') placedColors.add(state.regions[i]);
     }
     progress.style.setProperty('--progress-count', String(n));
+    const progressSize = n <= 8 ? 28 : n === 9 ? 27 : n === 10 ? 26 : n === 11 ? 24 : 23;
+    const progressGap = n <= 9 ? 1 : 0;
+    progress.style.setProperty('--progress-size', `${progressSize}px`);
+    progress.style.setProperty('--progress-gap', `${progressGap}px`);
     progress.setAttribute('aria-label', `${placedColors.size} of ${n} bird colors completed`);
     // Order the same colors as the board into a warm-to-cool rainbow strip.
     const rainbowOrder = Array.from({length: n}, (_, i) => i);
@@ -215,7 +219,7 @@
     dialog.classList.add('hidden');
     save();
     render();
-    tell(`Find ${size} birds!`);
+    tell('', 0);
   }
 
   function starterFor(size) {

@@ -34,15 +34,16 @@ h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weigh
 .new-button { background: #a87865; border: 0; border-radius: 13px; height: 43px; color: #fff; font-size: 14px; font-weight: 800; padding: 0 17px; white-space: nowrap; }
 .new-button span { margin-right: 3px; font-size: 20px; vertical-align: -1px; }
 .new-button:active { background: #956553; transform: translateY(1px); }
-.rules { text-align: center; font-size: 12px; line-height: 1.5; color: #9d7775; font-weight: 600; margin: 17px 6px 16px; }
+.rules { text-align: center; font-size: 12px; line-height: 1.45; color: #9d7775; font-weight: 600; margin: 17px 6px 16px; }
 .rules strong { color: var(--brown); }
-.swipe-note { margin-top: 4px; color: #a78276; }
-.rule-dot { padding: 0 4px; color: #d2ada0; }
+.rule-main { color: var(--brown); font-weight: 800; }
+.rule-sub { margin-top: 2px; color: #9d7775; font-weight: 700; }
+.swipe-note { margin-top: 7px; color: #b79d93; font-weight: 600; }
 /* One pastel silhouette for each color; brown means a bird was placed. */
-.rainbow-progress { --progress-count: 10; width: min(100%, 350px); margin: 0 auto 11px; padding: 4px 6px; min-height: 30px; display: grid; grid-template-columns: repeat(var(--progress-count), minmax(0,1fr)); align-items: center; gap: 0; background: #fffdfb; border-radius: 999px; box-shadow: 0 3px 12px rgba(126, 84, 72, .05); }
-.rainbow-bird { position: relative; display: grid; place-items: center; min-width: 0; height: 26px; color: var(--bird-color); transition: color .18s, transform .18s; }
+.rainbow-progress { --progress-count: 10; --progress-size: 26px; --progress-gap: 1px; width: fit-content; max-width: 100%; margin: 0 auto 11px; padding: 4px 8px; min-height: 30px; display: flex; align-items: center; justify-content: center; gap: var(--progress-gap); background: #fffdfb; border-radius: 999px; box-shadow: 0 3px 12px rgba(126, 84, 72, .05); }
+.rainbow-bird { position: relative; display: grid; place-items: center; min-width: 0; width: var(--progress-size); height: var(--progress-size); color: var(--bird-color); transition: color .18s, transform .18s; }
 .rainbow-bird.is-found { color: var(--bird-brown); transform: translateY(-1px); }
-.rainbow-bird .bird-drawing { width: 88%; max-height: 26px; height: 88%; }
+.rainbow-bird .bird-drawing { width: 88%; max-height: var(--progress-size); height: 88%; }
 .rainbow-bird .bird-eye { display: none; }
 .rainbow-bird .progress-dot { display: none; }
 .rainbow-bird.is-found .progress-dot { display: block; position: absolute; right: 2px; bottom: 1px; width: 9px; height: 9px; border-radius: 50%; background: var(--bird-color); border: 1.5px solid #fffdfb; box-shadow: 0 1px 2px rgba(97, 69, 63, .14); }
@@ -63,7 +64,8 @@ h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weigh
 .cell.is-error { animation: error-wiggle .25s ease-in-out 2; box-shadow: inset 0 0 0 3px #cc6a67; }
 @keyframes hint-pulse { 50% { filter: saturate(1.6) brightness(1.08); } }
 @keyframes error-wiggle { 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
-.message { min-height: 36px; display: flex; justify-content: center; align-items: center; text-align: center; padding: 6px; color: #a47c72; font-size: 12px; font-weight: 700; }
+.message { min-height: 0; display: flex; justify-content: center; align-items: center; text-align: center; padding: 0; margin: 0; color: #a47c72; font-size: 12px; font-weight: 700; }
+.message:not(:empty) { min-height: 32px; padding: 6px; margin-top: 2px; }
 .actions { display: flex; gap: 10px; margin: 11px 0; }
 .actions button { flex: 1; border: 1px solid #e9dcd7; border-radius: 14px; background: #fffaf7; min-height: 49px; color: #946d67; font-size: 13px; font-weight: 800; }
 .actions button span { font-size: 21px; vertical-align: -2px; margin-right: 4px; }
