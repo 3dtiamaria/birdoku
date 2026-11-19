@@ -27,13 +27,16 @@
   let hintIndex = -1;
   let usedStarters = {8: [], 10: []};
   let swipe = null;
+  let lastTap = null;
+  let lastPointerTapAt = 0;
+  const DOUBLE_TAP_MS = 340;
 
   try {
     const old = JSON.parse(localStorage.getItem(USED_KEY));
     if (old && typeof old === 'object') usedStarters = {...usedStarters, ...old};
   } catch (_) { /* storage may be disabled */ }
 
-  // The black bird silhouette is based on the supplied bird-emoji reference.
+  // The brown bird silhouette is based on the supplied bird-emoji reference.
   const birdSVG = `<svg viewBox="-7 -7 253 214" xmlns="http://www.w3.org/2000/svg" class="bird-drawing" aria-hidden="true"><path class="bird-shape" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M 46 1 L 30 8 L 17 21 L 11 38 L 11 47 L 13 49 L 3 58 L 0 65 L 7 70 L 19 71 L 17 74 L 20 81 L 24 110 L 32 131 L 54 149 L 64 154 L 83 157 L 83 167 L 81 170 L 63 175 L 60 178 L 61 184 L 76 184 L 88 180 L 93 175 L 95 168 L 94 158 L 91 157 L 110 156 L 110 175 L 90 194 L 92 199 L 98 199 L 112 190 L 122 180 L 123 166 L 121 153 L 143 153 L 151 149 L 161 139 L 169 137 L 176 128 L 183 124 L 182 114 L 172 108 L 211 81 L 227 73 L 238 63 L 238 59 L 230 50 L 218 43 L 199 36 L 172 32 L 166 33 L 149 56 L 142 63 L 135 65 L 124 60 L 116 52 L 104 27 L 86 8 L 67 0 Z"/><ellipse class="bird-eye" cx="55" cy="47" rx="5.3" ry="6.2" fill="#fff5e8"/></svg>`;
   // The same silhouette is reused for color-region progress markers.
 
@@ -69,9 +72,10 @@
       const r = Math.floor(i / n), c = i % n;
       const mark = state.marks[i];
       const classes = ['cell'];
+      if (mark === 'x') classes.push('is-cross');
       if (hintIndex === i) classes.push('is-hinted');
       const glyph = mark === 'bird' ? birdSVG : mark === 'x' ? '<span class="cross">×</span>' : '';
-      const label = `${mark === 'bird' ? 'Bird' : mark === 'x' ? 'Eliminated' : 'Empty'}, row ${r + 1}, column ${c + 1}${mark === 'bird' ? ', tap to clear' : mark === 'x' ? ', tap to try a bird' : ', tap to mark X'}`;
+      const label = `${mark === 'bird' ? 'Bird' : mark === 'x' ? 'Eliminated' : 'Empty'}, row ${r + 1}, column ${c + 1}${mark === 'bird' ? ', tap to clear' : mark === 'x' ? ', tap to remove X, double tap for a bird' : ', tap to mark X, double tap for a bird'}`;
       html += `<button class="${classes.join(' ')}" data-i="${i}" type="button" style="--cell-color:${palette[state.regions[i]] || COLORS[state.regions[i] % COLORS.length]}" aria-label="${label}">${glyph}</button>`;
     }
     board.innerHTML = html;
@@ -87,7 +91,7 @@
     progress.innerHTML = rainbowOrder.map(region => {
       const found = placedColors.has(region);
       const color = palette[region] || COLORS[region % COLORS.length];
-      return `<span class="rainbow-bird${found ? ' is-found' : ''}" style="--bird-color:${color}" title="${found ? 'Bird placed' : 'Bird to find'}">${birdSVG}</span>`;
+      return `<span class="rainbow-bird${found ? ' is-found' : ''}" style="--bird-color:${color}" title="${found ? 'Bird placed' : 'Bird to find'}">${birdSVG}${found ? '<span class=\"progress-dot\" aria-hidden=\"true\"></span>' : ''}</span>`;
     }).join('');
     $('undo').disabled = !state.history || state.history.length === 0;
   }
@@ -270,15 +274,38 @@
     } catch (_) { worker = null; }
   }
 
-  // Each tap advances the cell: empty → X → bird → empty.
-  // The first X is tentative, even on the bird's square, because the next
-  // tap must always be able to place a bird there. Swipes stay X-only.
+  // A single tap toggles an X on/off. A *quick* second tap on the
+  // same square places a bird. Swiping still only adds Xs.
   function tapCell(index) {
     if (state.givens[index] || state.completed) return;
     const mark = state.marks[index];
-    if (mark === '') applyMark(index, 'x', false, true);
-    else if (mark === 'x') applyMark(index, 'bird');
-    else applyMark(index, '');
+    const now = Date.now();
+    const isDoubleTap = lastTap && lastTap.index === index &&
+      now - lastTap.time <= DOUBLE_TAP_MS;
+    lastTap = null;
+
+    if (isDoubleTap) {
+      // The first tap has already toggled X. Treat the two taps as one
+      // undoable bird-placement action, rather than making Undo visit X.
+      const solutionCell = state.solution[Math.floor(index / state.size)] === index % state.size;
+      if (!solutionCell) {
+        errorAt(index, 'Not quite. This square cannot hold a bird.');
+        return;
+      }
+      const historyLength = state.history?.length || 0;
+      applyMark(index, 'bird');
+      if (state.history?.length === historyLength + 1 && historyLength > 0) {
+        state.history.pop();
+        save();
+        render();
+      }
+      return;
+    }
+
+    // Tapping an existing bird clears it. Tapping an X removes it.
+    if (mark === 'bird' || mark === 'x') applyMark(index, '');
+    else applyMark(index, 'x', false, true);
+    if (mark !== 'bird') lastTap = {index, time: now};
   }
 
   function cellAtPoint(x, y) {
@@ -306,6 +333,7 @@
     state.marks[index] = 'x';
     const cell = board.querySelector(`[data-i="${index}"]`);
     if (cell) {
+      cell.classList.add('is-cross');
       cell.innerHTML = '<span class="cross">×</span>';
       cell.setAttribute('aria-label', `Eliminated, row ${Math.floor(index / state.size) + 1}, column ${index % state.size + 1}`);
     }
@@ -339,6 +367,7 @@
     if (!swipe.active && next !== -1 && next !== swipe.start &&
         Math.hypot(event.clientX - swipe.startX, event.clientY - swipe.startY) > 6) {
       swipe.active = true;
+      lastTap = null;
     }
     if (swipe.active) paintBetween(swipe.x, swipe.y, event.clientX, event.clientY);
     swipe.x = event.clientX;
@@ -355,6 +384,7 @@
       save();
       render();
     } else if (!previous.active && !canceled) {
+      lastPointerTapAt = Date.now();
       tapCell(previous.start);
     }
   }
@@ -362,13 +392,16 @@
   board.addEventListener('pointercancel', event => finishSwipe(event, true));
   // Keep keyboard-accessible buttons working; pointer taps are handled above.
   board.addEventListener('click', event => {
-    if (event.detail !== 0) return;
+    // Mobile browsers can dispatch a detail=0 click after pointerup.
+    // Ignore it to prevent a single touch from toggling the cell twice.
+    if (event.detail !== 0 || Date.now() - lastPointerTapAt < 500) return;
     const cell = event.target.closest('.cell');
     if (cell) tapCell(Number(cell.dataset.i));
   });
-  $('new-puzzle').addEventListener('click', newPuzzle);
-  $('hint').addEventListener('click', giveHint);
+  $('new-puzzle').addEventListener('click', () => { lastTap = null; newPuzzle(); });
+  $('hint').addEventListener('click', () => { lastTap = null; giveHint(); });
   $('undo').addEventListener('click', () => {
+    lastTap = null;
     if (!state.history?.length) return;
     const previous = state.history.pop();
     state.marks = previous.marks;
@@ -380,6 +413,7 @@
     render();
   });
   $('restart').addEventListener('click', () => {
+    lastTap = null;
     state.history = [];
     state.marks = Array(state.size * state.size).fill('');
     state.completed = false;
@@ -389,7 +423,7 @@
     save();
     render();
   });
-  $('play-again').addEventListener('click', newPuzzle);
+  $('play-again').addEventListener('click', () => { lastTap = null; newPuzzle(); });
   $('close-dialog').addEventListener('click', () => dialog.classList.add('hidden'));
 
   try {

@@ -22,7 +22,7 @@
       </div>
     </header>
 
-    <div class="rules">One <strong>bird</strong> per row, column &amp; color <span class="rule-dot">•</span> Birds can't touch, even diagonally<div class="swipe-note">Tap once for ×, twice for a bird · Swipe to mark ×</div></div>
+    <div class="rules">One <strong>bird</strong> per row, column &amp; color <span class="rule-dot">•</span> Birds can't touch, even diagonally<div class="swipe-note">Tap: add/remove × · Double-tap: bird · Swipe: ×</div></div>
 
     <div class="rainbow-progress" id="progress" role="img" aria-label="Bird colors to find"></div>
 
@@ -30,7 +30,7 @@
       <div class="board" id="board" role="group" aria-label="Birdoku grid"></div>
     </section>
 
-    <div class="message" id="message" aria-live="polite">Tap once for ×, again for a bird · Swipe to cross out squares.</div>
+    <div class="message" id="message" aria-live="polite">Tap to add/remove × · Double-tap for a bird · Swipe to cross out squares.</div>
 
     <nav class="actions" aria-label="Game actions">
       <button type="button" id="undo"><span aria-hidden="true">↶</span> Undo</button>
@@ -38,8 +38,7 @@
       <button type="button" id="hint"><span aria-hidden="true">✧</span> Hint</button>
     </nav>
     <div class="new-puzzle-bottom"><button type="button" class="new-button" id="new-puzzle"><span aria-hidden="true">↻</span> New puzzle</button></div>
-    <p class="footer">No ads · No account · Play offline <span aria-hidden="true">♡</span></p>
-  </main>
+</main>
 
   <div class="overlay hidden" id="win-dialog" role="dialog" aria-modal="true" aria-labelledby="win-title">
     <div class="win-card">
