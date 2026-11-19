@@ -1,4 +1,4 @@
-const CACHE_NAME = 'birdoku-offline-v3';
+const CACHE_NAME = 'birdoku-offline-v5';
 const ASSETS = [
   './', './index.html', './style.css', './app.js', './generator.js', './worker.js',
   './starters.js', './icon.svg', './icon-192.png', './icon-512.png', './manifest.webmanifest'

@@ -2,14 +2,15 @@
   'use strict';
   const SAVE_KEY = 'birdoku-state-v1';
   const USED_KEY = 'birdoku-used-starters-v1';
-  const COLORS = ['#b07b58', '#f5a9c8', '#e8bd50', '#ebd78c', '#617db3', '#bdd1e3', '#ffa877', '#5eb7b6', '#d780b5', '#9774c6', '#b1d99d'];
+  // The first eleven colors retain the original palette, expanded to support 15 pastels.
+  const COLORS = ['#b07b58', '#f5a9c8', '#e8bd50', '#ebd78c', '#617db3', '#bdd1e3', '#ffa877', '#5eb7b6', '#d780b5', '#9774c6', '#b1d99d', '#e19d9e', '#9fc6b1', '#c8b5df', '#dfb78f', '#8fbfdb', '#d9a7c7', '#c1c68c', '#e59575', '#9b9bbd'];
+  const MIN_SIZE = 8, MAX_SIZE = 15;
+  const randomSize = () => MIN_SIZE + Math.floor(Math.random() * (MAX_SIZE - MIN_SIZE + 1));
   const $ = (id) => document.getElementById(id);
   const board = $('board');
-  const sizeSelect = $('grid-size');
-  const difficultySelect = $('difficulty');
   const dialog = $('win-dialog');
   const message = $('message');
-  const cached = {6: [], 8: [], 10: []};
+  const cached = Object.fromEntries(Array.from({length: MAX_SIZE - MIN_SIZE + 1}, (_, i) => [i + MIN_SIZE, []]));
   const pending = new Set();
   let worker = null;
   let workerBusy = false;
@@ -17,7 +18,7 @@
   let state = null;
   let messageTimeout = null;
   let hintIndex = -1;
-  let usedStarters = {6: [], 8: [], 10: []};
+  let usedStarters = {8: [], 10: []};
   let swipe = null;
 
   try {
@@ -50,7 +51,8 @@
   }
 
   function validState(s) {
-    return s && [6, 8, 10].includes(s.size) &&
+    return s && Number.isInteger(s.size) && // Preserve progress on older 6×6 and larger boards, while new boards stay 8–15.
+      s.size >= 6 && s.size <= 20 &&
       Array.isArray(s.regions) && s.regions.length === s.size * s.size &&
       Array.isArray(s.marks) && s.marks.length === s.size * s.size &&
       Array.isArray(s.solution) && s.solution.length === s.size &&
@@ -62,8 +64,6 @@
   function render() {
     if (!state) return;
     const n = state.size;
-    sizeSelect.value = String(n);
-    difficultySelect.value = state.difficulty;
     board.style.setProperty('--n', String(n));
     board.dataset.size = String(n);
     board.setAttribute('aria-label', `${n} by ${n} bird puzzle`);
@@ -72,11 +72,10 @@
       const r = Math.floor(i / n), c = i % n;
       const mark = state.marks[i];
       const classes = ['cell'];
-      if (state.givens[i] === 'x') classes.push('is-given');
       if (hintIndex === i) classes.push('is-hinted');
       const glyph = mark === 'bird' ? birdSVG : mark === 'x' ? '<span class="cross">×</span>' : '';
-      const label = `${mark === 'bird' ? 'Bird' : mark === 'x' ? 'Eliminated' : 'Empty'}, row ${r + 1}, column ${c + 1}${state.givens[i] ? ', given clue' : mark === 'bird' ? ', tap to clear' : mark === 'x' ? ', tap to try a bird' : ', tap to mark X'}`;
-      html += `<button class="${classes.join(' ')}" data-i="${i}" type="button" style="--cell-color:${state.palette?.[state.regions[i]] || COLORS[state.regions[i]]}" aria-label="${label}" ${state.givens[i] ? 'aria-disabled="true"' : ''}>${glyph}</button>`;
+      const label = `${mark === 'bird' ? 'Bird' : mark === 'x' ? 'Eliminated' : 'Empty'}, row ${r + 1}, column ${c + 1}${mark === 'bird' ? ', tap to clear' : mark === 'x' ? ', tap to try a bird' : ', tap to mark X'}`;
+      html += `<button class="${classes.join(' ')}" data-i="${i}" type="button" style="--cell-color:${state.palette?.[state.regions[i]] || COLORS[state.regions[i]]}" aria-label="${label}">${glyph}</button>`;
     }
     board.innerHTML = html;
     $('progress').textContent = `${countBirds()} / ${n} birds`;
@@ -189,32 +188,30 @@
     }
   }
 
-  function freshPuzzle(size, difficulty, preset) {
+  function freshPuzzle(size, preset) {
+    // Every new puzzle starts with an entirely blank board: no prefilled Xs.
     const p = BirdokuGen.transform(preset);
     const marks = Array(size * size).fill('');
     const givens = Array(size * size).fill('');
-    let clues = difficulty === 'easy' ? Math.round(size * size * .19)
-      : difficulty === 'medium' ? Math.round(size * size * .06) : 0;
-    const empty = Array.from({length: size * size}, (_, i) => i)
-      .filter(i => p.solution[Math.floor(i / size)] !== i % size);
-    for (let i = empty.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [empty[i], empty[j]] = [empty[j], empty[i]];
-    }
-    for (const i of empty.slice(0, clues)) { marks[i] = 'x'; givens[i] = 'x'; }
     const number = (state?.number || 0) + 1;
     const palette = [...COLORS];
     for (let i = palette.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [palette[i], palette[j]] = [palette[j], palette[i]];
     }
-    state = {size, difficulty, regions: p.regions, solution: p.solution, palette: palette.slice(0, size),
+    state = {size, regions: p.regions, solution: p.solution, palette: palette.slice(0, size),
       givens, marks, number, completed: false, history: []};
     hintIndex = -1;
     dialog.classList.add('hidden');
     save();
     render();
-    tell(`Puzzle ${number} · Find ${size} birds. Have fun!`);
+    tell(`Puzzle ${number} · ${size} × ${size} · Find ${size} birds!`);
+  }
+
+  function starterFor(size) {
+    const seedSize = size <= 9 ? 8 : 10;
+    const seed = takeStarter(seedSize);
+    return size === seedSize ? seed : BirdokuGen.expand(seed, size);
   }
 
   function takeStarter(size) {
@@ -241,13 +238,14 @@
     if (!size) return;
     pending.delete(size);
     workerBusy = true;
-    worker.postMessage({size, id: ++nextId});
+    const seedSize = size <= 9 ? 8 : 10;
+    worker.postMessage({size, id: ++nextId, seed: takeStarter(seedSize)});
   }
 
   function newPuzzle() {
-    const size = Number(sizeSelect.value), difficulty = difficultySelect.value;
+    const size = randomSize();
     const generated = cached[size].shift();
-    freshPuzzle(size, difficulty, generated || takeStarter(size));
+    freshPuzzle(size, generated || starterFor(size));
     prefetch(size);
   }
 
@@ -258,7 +256,7 @@
       worker.addEventListener('message', (event) => {
         workerBusy = false;
         const {size, puzzle} = event.data;
-        if (puzzle && BirdokuGen.solutions(size, puzzle.regions, 2).length === 1) cached[size].push(puzzle);
+        if (puzzle && BirdokuGen.validPuzzle(puzzle)) cached[size].push(puzzle);
         runNextRequest();
       });
       worker.addEventListener('error', () => { workerBusy = false; worker.terminate(); worker = null; });
@@ -377,7 +375,7 @@
   });
   $('restart').addEventListener('click', () => {
     state.history = [];
-    state.marks = [...state.givens];
+    state.marks = Array(state.size * state.size).fill('');
     state.completed = false;
     hintIndex = -1;
     dialog.classList.add('hidden');
@@ -385,8 +383,6 @@
     save();
     render();
   });
-  sizeSelect.addEventListener('change', newPuzzle);
-  difficultySelect.addEventListener('change', newPuzzle);
   $('play-again').addEventListener('click', newPuzzle);
   $('close-dialog').addEventListener('click', () => dialog.classList.add('hidden'));
 
@@ -394,8 +390,18 @@
     const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (validState(saved)) state = saved;
   } catch (_) {}
-  if (state) { render(); tell(state.completed ? 'Beautifully solved! Start another puzzle any time.' : 'Welcome back! Your puzzle was saved.'); }
-  else freshPuzzle(10, 'medium', takeStarter(10));
+  if (state) {
+    // Older releases put permanent crosses on Easy / Medium boards. Clear
+    // only those original clues when upgrading, leaving user-made moves alone.
+    if (state.givens.some(mark => mark === 'x')) {
+      state.marks = state.marks.map((mark, i) => state.givens[i] === 'x' ? '' : mark);
+      state.givens = Array(state.size * state.size).fill('');
+      state.history = [];
+      save();
+    }
+    render();
+    tell(state.completed ? 'Beautifully solved! Start another puzzle any time.' : 'Welcome back! Your puzzle was saved.');
+  } else newPuzzle();
   startBackgroundGenerator();
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {

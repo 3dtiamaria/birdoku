@@ -23,22 +23,9 @@
       <div class="progress-pill" id="progress" aria-live="polite">0 / 10 birds</div>
     </header>
 
-    <section class="panel settings-panel" aria-label="Choose a puzzle">
-      <label>Grid size
-        <select id="grid-size">
-          <option value="6">6 × 6</option>
-          <option value="8">8 × 8</option>
-          <option value="10" selected>10 × 10</option>
-        </select>
-      </label>
-      <label>Difficulty
-        <select id="difficulty">
-          <option value="easy">Easy</option>
-          <option value="medium" selected>Medium</option>
-          <option value="hard">Hard</option>
-        </select>
-      </label>
-      <button type="button" class="new-button" id="new-puzzle"><span aria-hidden="true">↻</span> New</button>
+    <section class="panel settings-panel" aria-label="New puzzle">
+      <span class="random-label">Random grid <strong>8 × 8 – 15 × 15</strong></span>
+      <button type="button" class="new-button" id="new-puzzle"><span aria-hidden="true">↻</span> New puzzle</button>
     </section>
 
     <div class="rules">One <strong>bird</strong> per row, column &amp; color <span class="rule-dot">•</span> Birds can't touch, even diagonally<div class="swipe-note">Tap once for ×, twice for a bird · Swipe to mark ×</div></div>

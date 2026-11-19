@@ -164,6 +164,81 @@ const BirdokuGen = (() => {
     return null;
   }
 
+  // Grow a uniquely solvable board to any size up to 15. Every added row
+  // and column are the same NEW connected region, shaped like an L at a
+  // random outer corner. The new bird is forced at the L's intersection:
+  // placing it anywhere else would require two birds of that color in order
+  // to satisfy both the new row and the new column. The original puzzle's
+  // unique layout therefore remains unique. Choose a corner where the new
+  // bird does not touch the existing solution.
+  function expand(base, targetSize) {
+    if (!base || targetSize < base.size || targetSize > 15) return null;
+    let puzzle = {size: base.size, regions: [...base.regions], solution: [...base.solution]};
+    while (puzzle.size < targetSize) {
+      const n = puzzle.size;
+      const choices = [];
+      for (const rowSide of ['top', 'bottom']) for (const colSide of ['left', 'right']) {
+        const nearestBird = rowSide === 'top' ? puzzle.solution[0] : puzzle.solution[n - 1];
+        if ((colSide === 'left' && nearestBird !== 0) ||
+            (colSide === 'right' && nearestBird !== n - 1)) {
+          choices.push({rowSide, colSide});
+        }
+      }
+      const {rowSide, colSide} = choices[Math.floor(Math.random() * choices.length)];
+      const rowShift = rowSide === 'top' ? 1 : 0;
+      const colShift = colSide === 'left' ? 1 : 0;
+      const newRow = rowSide === 'top' ? 0 : n;
+      const newCol = colSide === 'left' ? 0 : n;
+      const regions = Array((n + 1) ** 2).fill(n);
+      const solution = Array(n + 1);
+      for (let r = 0; r < n; r++) {
+        solution[r + rowShift] = puzzle.solution[r] + colShift;
+        for (let c = 0; c < n; c++) {
+          regions[(r + rowShift) * (n + 1) + c + colShift] = puzzle.regions[r * n + c];
+        }
+      }
+      solution[newRow] = newCol;
+      puzzle = {size: n + 1, solution, regions};
+    }
+    return puzzle;
+  }
+
+  // Fast structural validation without performing an exponential large-board
+  // uniqueness search. Expanded puzzles have uniqueness by construction.
+  function validPuzzle(puzzle) {
+    if (!puzzle || !Number.isInteger(puzzle.size)) return false;
+    const {size: n, solution, regions} = puzzle;
+    if (n < 8 || n > 15 || !Array.isArray(regions) || regions.length !== n * n ||
+        !Array.isArray(solution) || solution.length !== n) return false;
+    const columns = new Set(), colors = new Set();
+    for (let r = 0; r < n; r++) {
+      const c = solution[r];
+      if (!Number.isInteger(c) || c < 0 || c >= n || columns.has(c) ||
+          (r > 0 && Math.abs(c - solution[r - 1]) <= 1)) return false;
+      columns.add(c);
+      colors.add(regions[r * n + c]);
+    }
+    if (colors.size !== n) return false;
+    const counts = Array(n).fill(0), nb = neighbors(n);
+    for (const k of regions) {
+      if (!Number.isInteger(k) || k < 0 || k >= n) return false;
+      counts[k]++;
+    }
+    for (let k = 0; k < n; k++) {
+      if (!counts[k]) return false;
+      const begin = regions.indexOf(k);
+      const reached = new Set([begin]), stack = [begin];
+      while (stack.length) {
+        const p = stack.pop();
+        for (const q of nb[p]) if (regions[q] === k && !reached.has(q)) {
+          reached.add(q); stack.push(q);
+        }
+      }
+      if (reached.size !== counts[k]) return false;
+    }
+    return true;
+  }
+
   function transform(puzzle) {
     const n = puzzle.size, rotation = Math.floor(Math.random() * 4);
     const mirror = Math.random() < 0.5;
@@ -179,6 +254,6 @@ const BirdokuGen = (() => {
     return {size: n, solution, regions};
   }
 
-  return {generate, solutions, transform};
+  return {generate, solutions, transform, expand, validPuzzle};
 })();
 if (typeof module !== 'undefined') module.exports = BirdokuGen;
