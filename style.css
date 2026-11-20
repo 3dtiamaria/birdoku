@@ -63,7 +63,7 @@ h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weigh
 .cell .cross { font-family: 'Trebuchet MS', system-ui, sans-serif; font-size: clamp(18px, 98cqi, 58px); font-weight: 900; line-height: .88; color: #fffaf3; text-shadow: 0 2px 2px rgba(114,64,57,.18); transform: translateY(-1px) scale(1.08); -webkit-text-stroke: clamp(1.1px, 5.6cqi, 3.2px) currentColor; }
 .cell.is-bird { background: var(--cell-found-color, var(--cell-color)); }
 .cell.is-mistake { background-image: repeating-linear-gradient(45deg,rgba(255,252,249,.12),rgba(255,252,249,.12) 9px,rgba(148,103,82,.09) 9px,rgba(148,103,82,.09) 18px); }
-.cell .cross-error { color: #9d7775; text-shadow: 0 1px 1px rgba(255,255,255,.30); }
+.cell .cross-error { color: #b79d93; text-shadow: 0 1px 1px rgba(255,255,255,.30); }
 .cell .bird-drawing { width: 79%; height: 79%; color: var(--bird-brown); filter: drop-shadow(0 1px 1px var(--bird-brown-shadow)); }
 .cell.is-hinted { animation: hint-pulse .8s ease 2; box-shadow: inset 0 0 0 3px rgba(255,255,255,.96); }
 .cell.is-error { animation: error-wiggle .25s ease-in-out 2; box-shadow: inset 0 0 0 3px #cc6a67; }

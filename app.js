@@ -2,13 +2,10 @@
   'use strict';
   const SAVE_KEY = 'birdoku-state-v1';
   const USED_KEY = 'birdoku-used-starters-v1';
-  // The first eleven colors retain the original palette, expanded for variable-sized boards.
-  // Fixed, gentle rainbow based on the original game’s silhouette progression:
-  // rose → blush → peach → gold → green → teal → blue → lilac → pink.
-  // Keep the same order across puzzles rather than shuffling the palette.
-    const COLORS = [
-    '#e8a6bc', '#e8b096', '#f0c28f', '#e4d27b',
-    '#c6d47a', '#79b97d', '#69c3c9', '#8fc7e2',
+  // Fixed pastel rainbow: keep region order and distinct warm yellow, lime, and green.
+  const COLORS = [
+    '#e8a6bc', '#e8b096', '#f0c28f', '#e5c76f',
+    '#a9d18c', '#79b97d', '#69c3c9', '#8fc7e2',
     '#a9b9e4', '#c7b0e4'
   ];
   const MIN_SIZE = 8, MAX_SIZE = 10;
@@ -98,7 +95,7 @@
   function emphasizeColor(hex) {
     const { r, g, b } = hexToRgb(hex);
     const { h, s, l } = rgbToHsl(r, g, b);
-    return hslToHex(h, clamp(s + 0.12, 0, 1), clamp(l - 0.045, 0, 1));
+    return hslToHex(h, clamp(s + 0.055, 0, 1), clamp(l - 0.018, 0, 1));
   }
 
   function tell(text, duration = 3500) {

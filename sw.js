@@ -1,5 +1,5 @@
 // Birdoku v13: prefer fresh files while online, cached files while offline.
-const CACHE_NAME = 'birdoku-offline-v14';
+const CACHE_NAME = 'birdoku-offline-v15';
 const ASSETS = [
   './', './index.html', './style.css', './app.js', './generator.js', './worker.js',
   './starters.js', './icon.svg', './icon-192.png', './icon-512.png', './manifest.webmanifest'
