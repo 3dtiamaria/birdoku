@@ -4,7 +4,7 @@
   const USED_KEY = 'birdoku-used-starters-v1';
   // Fixed pastel rainbow: keep region order and distinct warm yellow, lime, and green.
   const COLORS = [
-    '#e8a6bc', '#e8b096', '#f0c28f', '#e4d27b',
+    '#e8a6bc', '#e1a48e', '#efc590', '#ead36f',
     '#a9d18c', '#79b97d', '#69c3c9', '#8fc7e2',
     '#a9b9e4', '#c7b0e4'
   ];
