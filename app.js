@@ -28,7 +28,6 @@
   let lastTap = null;
   let lastPointerTapAt = 0;
   const DOUBLE_TAP_MS = 340;
-  const pendingWrongCrosses = new Map();
 
   try {
     const old = JSON.parse(localStorage.getItem(USED_KEY));
@@ -176,26 +175,13 @@
     return state.solution[Math.floor(index / state.size)] === index % state.size;
   }
 
-  function cancelPendingWrongCross(index) {
-    const timer = pendingWrongCrosses.get(index);
-    if (timer !== undefined) clearTimeout(timer);
-    pendingWrongCrosses.delete(index);
-  }
-
-  function clearPendingWrongCrosses() {
-    for (const timer of pendingWrongCrosses.values()) clearTimeout(timer);
-    pendingWrongCrosses.clear();
-  }
-
   function wrongMove(index, explanation, shareUndo = false) {
     if (state.completed || state.gameOver) return;
-    cancelPendingWrongCross(index);
     if (!shareUndo) pushUndo();
     state.marks[index] = 'mistake';
     state.mistakes = (state.mistakes || 0) + 1;
     if (state.mistakes >= state.mistakeLimit) {
       state.gameOver = true;
-      clearPendingWrongCrosses();
       lossDialog.classList.remove('hidden');
       tell('Game over — try the puzzle again or start a new one.', 0);
     } else {
@@ -206,25 +192,10 @@
     render();
   }
 
-  function scheduleWrongCross(index) {
-    // The first tap must remain available for a valid second tap to place a bird.
-    // Only commit the mistaken X after the double-tap window has passed.
-    cancelPendingWrongCross(index);
-    const puzzle = state;
-    pendingWrongCrosses.set(index, setTimeout(() => {
-      pendingWrongCrosses.delete(index);
-      if (state === puzzle && !state.completed && !state.gameOver &&
-          state.marks[index] === 'x' && solutionCell(index)) {
-        wrongMove(index, 'That square needs a bird.');
-      }
-    }, DOUBLE_TAP_MS + 40));
-  }
-
   function winIfComplete() {
     const n = state.size;
     const solved = state.solution.every((c, r) => state.marks[r * n + c] === 'bird');
     if (solved && !state.completed && !state.gameOver) {
-      clearPendingWrongCrosses();
       // Finish the entire grid, even when the player solved it before crossing every square.
       for (let i = 0; i < n * n; i++) {
         if (state.marks[i] !== 'bird') state.marks[i] = 'x';
@@ -242,13 +213,8 @@
       wrongMove(index, 'That square cannot hold a bird.');
       return;
     }
-    if (value === 'x' && correctPosition && !tentativeCross) {
-      wrongMove(index, 'That square needs a bird.');
-      return;
-    }
     const next = state.marks[index] === value && !fromHint ? '' : value;
     if (next === state.marks[index]) return;
-    cancelPendingWrongCross(index);
     pushUndo();
     state.marks[index] = next;
     hintIndex = fromHint ? index : -1;
@@ -316,7 +282,6 @@
 
   function freshPuzzle(size, preset) {
     // Every new puzzle starts with an entirely blank board: no prefilled Xs.
-    clearPendingWrongCrosses();
     const p = BirdokuGen.transform(preset);
     const marks = Array(size * size).fill('');
     const givens = Array(size * size).fill('');
@@ -390,7 +355,7 @@
   }
 
   // A single tap toggles an X on/off. A *quick* second tap on the
-  // same square places a bird. Swiping still only adds Xs.
+  // same square places a bird. Swipes add or remove Xs based on the first cell.
   function tapCell(index) {
     if (state.givens[index] || state.completed || state.gameOver) return;
     const mark = state.marks[index];
@@ -400,8 +365,7 @@
     lastTap = null;
 
     if (isDoubleTap) {
-      cancelPendingWrongCross(index);
-      // The first tap has already toggled X. Treat the two taps as one
+        // The first tap has already toggled X. Treat the two taps as one
       // undoable bird-placement action, rather than making Undo visit X.
       const solutionCell = state.solution[Math.floor(index / state.size)] === index % state.size;
       if (!solutionCell) {
@@ -420,11 +384,9 @@
 
     // Tapping an existing bird clears it. Tapping an X removes it.
     if (mark === 'bird' || mark === 'x' || mark === 'mistake') {
-      cancelPendingWrongCross(index);
-      applyMark(index, '');
+        applyMark(index, '');
     } else {
       applyMark(index, 'x', false, true);
-      if (solutionCell(index)) scheduleWrongCross(index);
     }
     if (mark !== 'bird') lastTap = {index, time: now};
   }
@@ -438,27 +400,25 @@
     return row * n + col;
   }
 
-  function paintCross(index) {
+  function paintSwipeCell(index) {
     if (index < 0 || swipe.visited.has(index)) return;
     swipe.visited.add(index);
-    if (state.completed || state.gameOver || state.givens[index] || state.marks[index]) return;
-    if (solutionCell(index)) {
-      if (!swipe.warned) {
-        swipe.warned = true;
-        const alreadySavedUndo = swipe.changed;
-        swipe.changed = true;
-        wrongMove(index, 'That square needs a bird.', alreadySavedUndo);
-      }
-      return;
-    }
+    if (state.completed || state.gameOver || state.givens[index]) return;
+    const mark = state.marks[index];
+    const erasing = swipe.mode === 'erase';
+    // A swipe changes only X marks. Birds stay in place, and a swipe
+    // never counts as a mistake—even when it crosses the solution cell.
+    if (erasing ? (mark !== 'x' && mark !== 'mistake') : mark !== '') return;
     if (!swipe.changed) pushUndo();
     swipe.changed = true;
-    state.marks[index] = 'x';
+    state.marks[index] = erasing ? '' : 'x';
     const cell = board.querySelector(`[data-i="${index}"]`);
     if (cell) {
-      cell.classList.add('is-cross');
-      cell.innerHTML = '<span class="cross">×</span>';
-      cell.setAttribute('aria-label', `Eliminated, row ${Math.floor(index / state.size) + 1}, column ${index % state.size + 1}`);
+      cell.classList.toggle('is-cross', !erasing);
+      cell.classList.remove('is-mistake');
+      cell.innerHTML = erasing ? '' : '<span class="cross">×</span>';
+      const action = erasing ? 'Empty' : 'Eliminated';
+      cell.setAttribute('aria-label', `${action}, row ${Math.floor(index / state.size) + 1}, column ${index % state.size + 1}`);
     }
   }
 
@@ -469,7 +429,7 @@
     const samples = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / spacing));
     for (let i = 0; i <= samples; i++) {
       const t = i / samples;
-      paintCross(cellAtPoint(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t));
+      paintSwipeCell(cellAtPoint(x1 + (x2 - x1) * t, y1 + (y2 - y1) * t));
     }
   }
 
@@ -478,9 +438,10 @@
     const cell = event.target.closest('.cell');
     if (!cell) return;
     event.preventDefault();
-    swipe = {id: event.pointerId, start: Number(cell.dataset.i), x: event.clientX, y: event.clientY,
+    const initialMark = state.marks[Number(cell.dataset.i)];
+    swipe = {id: event.pointerId, start: Number(cell.dataset.i), mode: initialMark === 'x' || initialMark === 'mistake' ? 'erase' : 'add', x: event.clientX, y: event.clientY,
       startX: event.clientX, startY: event.clientY,
-      active: false, changed: false, warned: false, visited: new Set()};
+      active: false, changed: false, visited: new Set()};
     board.setPointerCapture(event.pointerId);
   });
 
@@ -526,7 +487,6 @@
   $('undo').addEventListener('click', () => {
     lastTap = null;
     if (!state.history?.length || state.gameOver) return;
-    clearPendingWrongCrosses();
     const previous = state.history.pop();
     state.marks = previous.marks;
     state.completed = previous.completed;
@@ -538,7 +498,6 @@
   });
   function restartGame() {
     lastTap = null;
-    clearPendingWrongCrosses();
     state.history = [];
     state.marks = Array(state.size * state.size).fill('');
     state.completed = false;
