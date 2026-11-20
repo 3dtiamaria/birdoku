@@ -49,7 +49,7 @@ h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weigh
 .rainbow-bird .bird-eye { display: none; }
 .rainbow-bird .progress-dot { display: none; }
 .rainbow-bird.is-found .progress-dot { display: block; position: absolute; right: 2px; bottom: 1px; width: 9px; height: 9px; border-radius: 50%; background: var(--bird-color); border: 1.5px solid #fffdfb; box-shadow: 0 1px 2px rgba(97, 69, 63, .14); }
-.play-area { background: #fff; padding: 5px; border-radius: 20px; box-shadow: 0 10px 22px rgba(122, 77, 75, .06); }
+.play-area { background: #fff; padding: 5px; border-radius: 10px; box-shadow: 0 10px 22px rgba(122, 77, 75, .06); }
 .board { width: 100%; aspect-ratio: 1; display: grid; gap: 3px; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); grid-template-rows: repeat(var(--n), minmax(0, 1fr)); touch-action: none; user-select: none; -webkit-user-select: none; }
 .cell { container-type: inline-size; min-width: 0; min-height: 0; border: 0; padding: 0; margin: 0; border-radius: 5px; position: relative; display: grid; place-items: center; background: var(--cell-color); overflow: hidden; transition: filter .1s, transform .1s; }
 .cell:active { filter: brightness(.94); transform: scale(.97); }
