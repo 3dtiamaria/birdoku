@@ -41,7 +41,7 @@ h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weigh
 .swipe-note { margin-top: 7px; color: #b79d93; font-weight: 600; }
 /* One pastel silhouette for each color; brown means a bird was placed. */
 .rainbow-progress { --progress-count: 10; --progress-size: 26px; --progress-gap: 1px; width: fit-content; max-width: 100%; margin: 0 auto 11px; padding: 4px 8px; min-height: 30px; display: flex; align-items: center; justify-content: center; gap: var(--progress-gap); background: #fffdfb; border-radius: 999px; box-shadow: 0 3px 12px rgba(126, 84, 72, .05); }
-.rainbow-bird { position: relative; display: grid; place-items: center; min-width: 0; width: var(--progress-size); height: var(--progress-size); color: var(--bird-color); transition: color .18s, transform .18s; }
+.rainbow-bird { flex: 0 0 var(--progress-size); position: relative; display: grid; place-items: center; min-width: 0; width: var(--progress-size); height: var(--progress-size); color: var(--bird-color); transition: color .18s, transform .18s; }
 .rainbow-bird.is-found { color: var(--bird-brown); transform: translateY(-1px); }
 .rainbow-bird .bird-drawing { width: 88%; max-height: var(--progress-size); height: 88%; }
 .rainbow-bird .bird-eye { display: none; }
@@ -59,6 +59,7 @@ h1 { font-size: clamp(27px, 7vw, 35px); line-height: 1.02; margin: 0; font-weigh
 }
 .cell.is-cross:active { filter: saturate(.92) brightness(.93); }
 .cell .cross { font-family: 'Trebuchet MS', system-ui, sans-serif; font-size: clamp(18px, 98cqi, 58px); font-weight: 900; line-height: .88; color: #fffaf3; text-shadow: 0 2px 2px rgba(114,64,57,.18); transform: translateY(-1px) scale(1.08); -webkit-text-stroke: clamp(1.1px, 5.6cqi, 3.2px) currentColor; }
+.cell.is-bird { background: var(--cell-found-color, var(--cell-color)); }
 .cell .bird-drawing { width: 79%; height: 79%; color: var(--bird-brown); filter: drop-shadow(0 1px 1px var(--bird-brown-shadow)); }
 .cell.is-hinted { animation: hint-pulse .8s ease 2; box-shadow: inset 0 0 0 3px rgba(255,255,255,.96); }
 .cell.is-error { animation: error-wiggle .25s ease-in-out 2; box-shadow: inset 0 0 0 3px #cc6a67; }

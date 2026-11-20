@@ -6,12 +6,12 @@
   // Fixed, gentle rainbow based on the original game’s silhouette progression:
   // rose → blush → peach → gold → green → teal → blue → lilac → pink.
   // Keep the same order across puzzles rather than shuffling the palette.
-  const COLORS = [
-    '#ec9db5', '#f4bccf', '#efb2ac', '#f5c4a4',
-    '#edda91', '#c4dda4', '#a1d4c3', '#87c9d0',
-    '#a8d5ed', '#aec3e7', '#c2b0df', '#dcadd2'
+    const COLORS = [
+    '#e8a6bc', '#e8b096', '#f0c28f', '#e4d27b',
+    '#bfd78f', '#9fcfae', '#91cdc3', '#8fc7e2',
+    '#a9b9e4', '#c7b0e4'
   ];
-  const MIN_SIZE = 8, MAX_SIZE = 12;
+  const MIN_SIZE = 8, MAX_SIZE = 10;
   const randomSize = () => MIN_SIZE + Math.floor(Math.random() * (MAX_SIZE - MIN_SIZE + 1));
   const $ = (id) => document.getElementById(id);
   const board = $('board');
@@ -40,6 +40,65 @@
   const birdSVG = `<svg viewBox="-7 -7 253 214" xmlns="http://www.w3.org/2000/svg" class="bird-drawing" aria-hidden="true"><path class="bird-shape" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" d="M 46 1 L 30 8 L 17 21 L 11 38 L 11 47 L 13 49 L 3 58 L 0 65 L 7 70 L 19 71 L 17 74 L 20 81 L 24 110 L 32 131 L 54 149 L 64 154 L 83 157 L 83 167 L 81 170 L 63 175 L 60 178 L 61 184 L 76 184 L 88 180 L 93 175 L 95 168 L 94 158 L 91 157 L 110 156 L 110 175 L 90 194 L 92 199 L 98 199 L 112 190 L 122 180 L 123 166 L 121 153 L 143 153 L 151 149 L 161 139 L 169 137 L 176 128 L 183 124 L 182 114 L 172 108 L 211 81 L 227 73 L 238 63 L 238 59 L 230 50 L 218 43 L 199 36 L 172 32 L 166 33 L 149 56 L 142 63 L 135 65 L 124 60 L 116 52 L 104 27 L 86 8 L 67 0 Z"/><ellipse class="bird-eye" cx="55" cy="47" rx="5.3" ry="6.2" fill="#fff5e8"/></svg>`;
   // The same silhouette is reused for color-region progress markers.
 
+
+  function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
+
+  function hexToRgb(hex) {
+    const clean = hex.replace('#', '');
+    const full = clean.length === 3 ? clean.split('').map(ch => ch + ch).join('') : clean;
+    const num = parseInt(full, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h, s;
+    const l = (max + min) / 2;
+    if (max === min) {
+      h = s = 0;
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        default: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return { h, s, l };
+  }
+
+  function hslToHex(h, s, l) {
+    let r, g, b;
+    if (s === 0) {
+      r = g = b = l;
+    } else {
+      const hue2rgb = (p, q, t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      r = hue2rgb(p, q, h + 1/3);
+      g = hue2rgb(p, q, h);
+      b = hue2rgb(p, q, h - 1/3);
+    }
+    const toHex = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  function emphasizeColor(hex) {
+    const { r, g, b } = hexToRgb(hex);
+    const { h, s, l } = rgbToHsl(r, g, b);
+    return hslToHex(h, clamp(s + 0.12, 0, 1), clamp(l - 0.045, 0, 1));
+  }
+
   function tell(text, duration = 3500) {
     message.textContent = text;
     if (messageTimeout) clearTimeout(messageTimeout);
@@ -52,7 +111,7 @@
   }
 
   function validState(s) {
-    return s && Number.isInteger(s.size) && // Preserve progress on older boards, while new boards stay 8–12.
+    return s && Number.isInteger(s.size) && // Preserve progress on older boards, while new boards stay 8–10.
       s.size >= 6 && s.size <= 20 &&
       Array.isArray(s.regions) && s.regions.length === s.size * s.size &&
       Array.isArray(s.marks) && s.marks.length === s.size * s.size &&
@@ -73,10 +132,13 @@
       const mark = state.marks[i];
       const classes = ['cell'];
       if (mark === 'x') classes.push('is-cross');
+      if (mark === 'bird') classes.push('is-bird');
       if (hintIndex === i) classes.push('is-hinted');
       const glyph = mark === 'bird' ? birdSVG : mark === 'x' ? '<span class="cross">×</span>' : '';
       const label = `${mark === 'bird' ? 'Bird' : mark === 'x' ? 'Eliminated' : 'Empty'}, row ${r + 1}, column ${c + 1}${mark === 'bird' ? ', tap to clear' : mark === 'x' ? ', tap to remove X, double tap for a bird' : ', tap to mark X, double tap for a bird'}`;
-      html += `<button class="${classes.join(' ')}" data-i="${i}" type="button" style="--cell-color:${palette[state.regions[i]] || COLORS[state.regions[i] % COLORS.length]}" aria-label="${label}">${glyph}</button>`;
+      const baseColor = palette[state.regions[i]] || COLORS[state.regions[i] % COLORS.length];
+      const foundColor = emphasizeColor(baseColor);
+      html += `<button class="${classes.join(' ')}" data-i="${i}" type="button" style="--cell-color:${baseColor};--cell-found-color:${foundColor}" aria-label="${label}">${glyph}</button>`;
     }
     board.innerHTML = html;
     const progress = $('progress');
@@ -85,10 +147,6 @@
       if (state.marks[i] === 'bird') placedColors.add(state.regions[i]);
     }
     progress.style.setProperty('--progress-count', String(n));
-    const progressSize = n <= 8 ? 28 : n === 9 ? 27 : n === 10 ? 26 : n === 11 ? 24 : 23;
-    const progressGap = n <= 9 ? 1 : 0;
-    progress.style.setProperty('--progress-size', `${progressSize}px`);
-    progress.style.setProperty('--progress-gap', `${progressGap}px`);
     progress.setAttribute('aria-label', `${placedColors.size} of ${n} bird colors completed`);
     // Order the same colors as the board into a warm-to-cool rainbow strip.
     const rainbowOrder = Array.from({length: n}, (_, i) => i);
@@ -444,11 +502,12 @@
       save();
     }
     render();
-    tell(state.completed ? 'Beautifully solved! Start another puzzle any time.' : 'Welcome back! Your puzzle was saved.');
+    // The rules are already above the board; keep the space below it empty on launch.
+    tell('', 0);
   } else newPuzzle();
   startBackgroundGenerator();
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js', {updateViaCache: 'none'}).catch(() => {});
   }
 })();
