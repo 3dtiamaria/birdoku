@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f7f2ef">
-  <meta name="birdoku-version" content="12">
+  <meta name="birdoku-version" content="13">
   <meta name="description" content="A cozy, offline bird-themed logic puzzle. One bird per row, column, and color.">
   <link rel="icon" href="./icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -21,6 +21,7 @@
           <p class="subtitle">A little puzzle break</p>
         </div>
       </div>
+      <div class="mistake-meter" id="mistake-meter" aria-live="polite">Mistakes 0 / 3</div>
     </header>
 
     <div class="rules"><div class="rule-main">One <strong>bird</strong> per row, column and color</div><div class="rule-sub">Birds can't touch, even diagonally</div><div class="swipe-note">Tap: add/remove × · Double-tap: bird · Swipe: ×</div></div>
@@ -48,6 +49,16 @@
       <p>Every bird has found its place.</p>
       <button type="button" id="play-again" class="new-button">Another puzzle <span aria-hidden="true">↗</span></button>
       <button type="button" id="close-dialog" class="quiet-button">Admire my board</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="loss-dialog" role="dialog" aria-modal="true" aria-labelledby="loss-title">
+    <div class="win-card">
+      <div class="loss-icon" aria-hidden="true">×</div>
+      <h2 id="loss-title">Game over</h2>
+      <p>Too many mistakes. Give these birds another try?</p>
+      <button type="button" id="retry-puzzle" class="new-button">↻ Retry this puzzle</button>
+      <button type="button" id="loss-new-puzzle" class="quiet-button">New puzzle instead</button>
     </div>
   </div>
 

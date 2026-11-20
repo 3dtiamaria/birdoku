@@ -8,7 +8,7 @@
   // Keep the same order across puzzles rather than shuffling the palette.
     const COLORS = [
     '#e8a6bc', '#e8b096', '#f0c28f', '#e4d27b',
-    '#bfd78f', '#9fcfae', '#91cdc3', '#8fc7e2',
+    '#c6d47a', '#79b97d', '#69c3c9', '#8fc7e2',
     '#a9b9e4', '#c7b0e4'
   ];
   const MIN_SIZE = 8, MAX_SIZE = 10;
@@ -16,6 +16,7 @@
   const $ = (id) => document.getElementById(id);
   const board = $('board');
   const dialog = $('win-dialog');
+  const lossDialog = $('loss-dialog');
   const message = $('message');
   const cached = Object.fromEntries(Array.from({length: MAX_SIZE - MIN_SIZE + 1}, (_, i) => [i + MIN_SIZE, []]));
   const pending = new Set();
@@ -30,6 +31,7 @@
   let lastTap = null;
   let lastPointerTapAt = 0;
   const DOUBLE_TAP_MS = 340;
+  const pendingWrongCrosses = new Map();
 
   try {
     const old = JSON.parse(localStorage.getItem(USED_KEY));
@@ -133,9 +135,10 @@
       const classes = ['cell'];
       if (mark === 'x') classes.push('is-cross');
       if (mark === 'bird') classes.push('is-bird');
+      if (mark === 'mistake') classes.push('is-mistake');
       if (hintIndex === i) classes.push('is-hinted');
-      const glyph = mark === 'bird' ? birdSVG : mark === 'x' ? '<span class="cross">×</span>' : '';
-      const label = `${mark === 'bird' ? 'Bird' : mark === 'x' ? 'Eliminated' : 'Empty'}, row ${r + 1}, column ${c + 1}${mark === 'bird' ? ', tap to clear' : mark === 'x' ? ', tap to remove X, double tap for a bird' : ', tap to mark X, double tap for a bird'}`;
+      const glyph = mark === 'bird' ? birdSVG : mark === 'x' ? '<span class="cross">×</span>' : mark === 'mistake' ? '<span class="cross cross-error">×</span>' : '';
+      const label = `${mark === 'bird' ? 'Bird' : mark === 'mistake' ? 'Mistake' : mark === 'x' ? 'Eliminated' : 'Empty'}, row ${r + 1}, column ${c + 1}${mark === 'bird' ? ', tap to clear' : mark === 'x' || mark === 'mistake' ? ', tap to remove X, double tap for a bird' : ', tap to mark X, double tap for a bird'}`;
       const baseColor = palette[state.regions[i]] || COLORS[state.regions[i] % COLORS.length];
       const foundColor = emphasizeColor(baseColor);
       html += `<button class="${classes.join(' ')}" data-i="${i}" type="button" style="--cell-color:${baseColor};--cell-found-color:${foundColor}" aria-label="${label}">${glyph}</button>`;
@@ -155,7 +158,15 @@
       const color = palette[region] || COLORS[region % COLORS.length];
       return `<span class="rainbow-bird${found ? ' is-found' : ''}" style="--bird-color:${color}" title="${found ? 'Bird placed' : 'Bird to find'}">${birdSVG}${found ? '<span class=\"progress-dot\" aria-hidden=\"true\"></span>' : ''}</span>`;
     }).join('');
-    $('undo').disabled = !state.history || state.history.length === 0;
+    const mistakes = state.mistakes || 0;
+    const limit = state.mistakeLimit || 5;
+    const meter = $('mistake-meter');
+    meter.textContent = `Mistakes ${mistakes} / ${limit}`;
+    meter.setAttribute('aria-label', `${mistakes} mistakes made, ${limit} allowed`);
+    meter.classList.toggle('at-limit', mistakes >= limit);
+    $('undo').disabled = !!state.gameOver || !state.history || state.history.length === 0;
+    $('hint').disabled = !!state.gameOver || !!state.completed;
+    $('restart').disabled = !!state.gameOver;
   }
 
   function pushUndo() {
@@ -164,21 +175,63 @@
     if (state.history.length > 60) state.history.shift();
   }
 
-  function errorAt(index, text) {
-    tell(`💡 ${text}`, 3800);
-    const cell = board.querySelector(`[data-i="${index}"]`);
-    if (cell) {
-      cell.classList.remove('is-error');
-      void cell.offsetWidth;
-      cell.classList.add('is-error');
-      setTimeout(() => cell.classList.remove('is-error'), 550);
+  function solutionCell(index) {
+    return state.solution[Math.floor(index / state.size)] === index % state.size;
+  }
+
+  function cancelPendingWrongCross(index) {
+    const timer = pendingWrongCrosses.get(index);
+    if (timer !== undefined) clearTimeout(timer);
+    pendingWrongCrosses.delete(index);
+  }
+
+  function clearPendingWrongCrosses() {
+    for (const timer of pendingWrongCrosses.values()) clearTimeout(timer);
+    pendingWrongCrosses.clear();
+  }
+
+  function wrongMove(index, explanation, shareUndo = false) {
+    if (state.completed || state.gameOver) return;
+    cancelPendingWrongCross(index);
+    if (!shareUndo) pushUndo();
+    state.marks[index] = 'mistake';
+    state.mistakes = (state.mistakes || 0) + 1;
+    if (state.mistakes >= state.mistakeLimit) {
+      state.gameOver = true;
+      clearPendingWrongCrosses();
+      lossDialog.classList.remove('hidden');
+      tell('Game over — try the puzzle again or start a new one.', 0);
+    } else {
+      const left = state.mistakeLimit - state.mistakes;
+      tell(`That was a mistake. ${left} ${left === 1 ? 'mistake' : 'mistakes'} remaining.`, 3200);
     }
+    save();
+    render();
+  }
+
+  function scheduleWrongCross(index) {
+    // The first tap must remain available for a valid second tap to place a bird.
+    // Only commit the mistaken X after the double-tap window has passed.
+    cancelPendingWrongCross(index);
+    const puzzle = state;
+    pendingWrongCrosses.set(index, setTimeout(() => {
+      pendingWrongCrosses.delete(index);
+      if (state === puzzle && !state.completed && !state.gameOver &&
+          state.marks[index] === 'x' && solutionCell(index)) {
+        wrongMove(index, 'That square needs a bird.');
+      }
+    }, DOUBLE_TAP_MS + 40));
   }
 
   function winIfComplete() {
     const n = state.size;
     const solved = state.solution.every((c, r) => state.marks[r * n + c] === 'bird');
-    if (solved && !state.completed) {
+    if (solved && !state.completed && !state.gameOver) {
+      clearPendingWrongCrosses();
+      // Finish the entire grid, even when the player solved it before crossing every square.
+      for (let i = 0; i < n * n; i++) {
+        if (state.marks[i] !== 'bird') state.marks[i] = 'x';
+      }
       state.completed = true;
       dialog.classList.remove('hidden');
       tell('All the birds are home! ✨', 0);
@@ -186,19 +239,19 @@
   }
 
   function applyMark(index, value, fromHint = false, tentativeCross = false) {
-    if (state.givens[index]) return;
-    if (state.completed) { tell('Puzzle finished — start a new one or undo.'); return; }
-    const correctPosition = state.solution[Math.floor(index / state.size)] === index % state.size;
+    if (state.givens[index] || state.completed || state.gameOver) return;
+    const correctPosition = solutionCell(index);
     if (value === 'bird' && !correctPosition) {
-      errorAt(index, 'Not quite. Try eliminating a few more squares first.');
+      wrongMove(index, 'That square cannot hold a bird.');
       return;
     }
     if (value === 'x' && correctPosition && !tentativeCross) {
-      errorAt(index, 'Keep this square in play for now.');
+      wrongMove(index, 'That square needs a bird.');
       return;
     }
     const next = state.marks[index] === value && !fromHint ? '' : value;
     if (next === state.marks[index]) return;
+    cancelPendingWrongCross(index);
     pushUndo();
     state.marks[index] = next;
     hintIndex = fromHint ? index : -1;
@@ -213,7 +266,7 @@
   }
 
   function giveHint() {
-    if (state.completed) { tell('You already solved it!'); return; }
+    if (state.completed || state.gameOver) return;
     const n = state.size;
     const candidates = [];
     for (let i = 0; i < n * n; i++) {
@@ -266,15 +319,18 @@
 
   function freshPuzzle(size, preset) {
     // Every new puzzle starts with an entirely blank board: no prefilled Xs.
+    clearPendingWrongCrosses();
     const p = BirdokuGen.transform(preset);
     const marks = Array(size * size).fill('');
     const givens = Array(size * size).fill('');
     const number = (state?.number || 0) + 1;
     const palette = [...COLORS];
     state = {size, regions: p.regions, solution: p.solution, palette: palette.slice(0, size),
-      givens, marks, number, completed: false, history: []};
+      givens, marks, number, completed: false, gameOver: false, mistakes: 0,
+      mistakeLimit: Math.random() < .5 ? 3 : 5, history: []};
     hintIndex = -1;
     dialog.classList.add('hidden');
+    lossDialog.classList.add('hidden');
     save();
     render();
     tell('', 0);
@@ -332,14 +388,14 @@
         runNextRequest();
       });
       worker.addEventListener('error', () => { workerBusy = false; worker.terminate(); worker = null; });
-      prefetch(state.size);
+      if (state.size >= MIN_SIZE && state.size <= MAX_SIZE) prefetch(state.size);
     } catch (_) { worker = null; }
   }
 
   // A single tap toggles an X on/off. A *quick* second tap on the
   // same square places a bird. Swiping still only adds Xs.
   function tapCell(index) {
-    if (state.givens[index] || state.completed) return;
+    if (state.givens[index] || state.completed || state.gameOver) return;
     const mark = state.marks[index];
     const now = Date.now();
     const isDoubleTap = lastTap && lastTap.index === index &&
@@ -347,11 +403,12 @@
     lastTap = null;
 
     if (isDoubleTap) {
+      cancelPendingWrongCross(index);
       // The first tap has already toggled X. Treat the two taps as one
       // undoable bird-placement action, rather than making Undo visit X.
       const solutionCell = state.solution[Math.floor(index / state.size)] === index % state.size;
       if (!solutionCell) {
-        errorAt(index, 'Not quite. This square cannot hold a bird.');
+        wrongMove(index, 'This square cannot hold a bird.');
         return;
       }
       const historyLength = state.history?.length || 0;
@@ -365,8 +422,13 @@
     }
 
     // Tapping an existing bird clears it. Tapping an X removes it.
-    if (mark === 'bird' || mark === 'x') applyMark(index, '');
-    else applyMark(index, 'x', false, true);
+    if (mark === 'bird' || mark === 'x' || mark === 'mistake') {
+      cancelPendingWrongCross(index);
+      applyMark(index, '');
+    } else {
+      applyMark(index, 'x', false, true);
+      if (solutionCell(index)) scheduleWrongCross(index);
+    }
     if (mark !== 'bird') lastTap = {index, time: now};
   }
 
@@ -382,11 +444,13 @@
   function paintCross(index) {
     if (index < 0 || swipe.visited.has(index)) return;
     swipe.visited.add(index);
-    if (state.completed || state.givens[index] || state.marks[index]) return;
-    if (state.solution[Math.floor(index / state.size)] === index % state.size) {
+    if (state.completed || state.gameOver || state.givens[index] || state.marks[index]) return;
+    if (solutionCell(index)) {
       if (!swipe.warned) {
-        errorAt(index, 'There should be a bird in this square.');
         swipe.warned = true;
+        const alreadySavedUndo = swipe.changed;
+        swipe.changed = true;
+        wrongMove(index, 'That square needs a bird.', alreadySavedUndo);
       }
       return;
     }
@@ -464,7 +528,8 @@
   $('hint').addEventListener('click', () => { lastTap = null; giveHint(); });
   $('undo').addEventListener('click', () => {
     lastTap = null;
-    if (!state.history?.length) return;
+    if (!state.history?.length || state.gameOver) return;
+    clearPendingWrongCrosses();
     const previous = state.history.pop();
     state.marks = previous.marks;
     state.completed = previous.completed;
@@ -474,18 +539,25 @@
     save();
     render();
   });
-  $('restart').addEventListener('click', () => {
+  function restartGame() {
     lastTap = null;
+    clearPendingWrongCrosses();
     state.history = [];
     state.marks = Array(state.size * state.size).fill('');
     state.completed = false;
+    state.gameOver = false;
+    state.mistakes = 0;
     hintIndex = -1;
     dialog.classList.add('hidden');
+    lossDialog.classList.add('hidden');
     tell('Fresh start, same puzzle.');
     save();
     render();
-  });
+  }
+  $('restart').addEventListener('click', restartGame);
   $('play-again').addEventListener('click', () => { lastTap = null; newPuzzle(); });
+  $('retry-puzzle').addEventListener('click', restartGame);
+  $('loss-new-puzzle').addEventListener('click', () => { lastTap = null; newPuzzle(); });
   $('close-dialog').addEventListener('click', () => dialog.classList.add('hidden'));
 
   try {
@@ -493,6 +565,18 @@
     if (validState(saved)) state = saved;
   } catch (_) {}
   if (state) {
+    if (!Number.isInteger(state.mistakeLimit) || ![3, 5].includes(state.mistakeLimit)) {
+      state.mistakeLimit = Math.random() < .5 ? 3 : 5;
+    }
+    if (!Number.isInteger(state.mistakes)) state.mistakes = 0;
+    if (typeof state.gameOver !== 'boolean') state.gameOver = false;
+    // Correct older saves that reached the limit before this rule was fixed.
+    if (!state.completed && state.mistakes >= state.mistakeLimit) state.gameOver = true;
+    if (state.completed) {
+      for (let i = 0; i < state.marks.length; i++) {
+        if (state.marks[i] !== 'bird') state.marks[i] = 'x';
+      }
+    }
     // Older releases put permanent crosses on Easy / Medium boards. Clear
     // only those original clues when upgrading, leaving user-made moves alone.
     if (state.givens.some(mark => mark === 'x')) {
@@ -501,7 +585,9 @@
       state.history = [];
       save();
     }
+    save();
     render();
+    if (state.gameOver) lossDialog.classList.remove('hidden');
     // The rules are already above the board; keep the space below it empty on launch.
     tell('', 0);
   } else newPuzzle();
